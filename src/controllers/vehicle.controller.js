@@ -3,7 +3,7 @@ const Client = require('../models/clientSchema');
 
 exports.createVehicle = async (req, res, next) => {
   try {
-    const { maker, model, type, dateOfManufacture, color, driverName, driverPhone,image, clientId } = req.body;
+    const { maker, model, type, dateOfManufacture, color, driverName, driverPhone,image, clientId, registrationNumber } = req.body;
     const vehicle = new Vehicle({
       maker,
       model,
