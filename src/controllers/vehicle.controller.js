@@ -1,5 +1,7 @@
 const Vehicle = require('../models/vehicleSchema');
 const Client = require('../models/clientSchema');
+const Serivce = require('../models/serviceSchema');
+const Spares = require('../models/sparePartsSchema');
 
 exports.createVehicle = async (req, res, next) => {
   try {
@@ -81,6 +83,40 @@ exports.deleteVehicle = async (req, res, next) => {
     const vehicle = await Vehicle.findByIdAndDelete(req.params.id);
     if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
     res.json({ message: 'Vehicle deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+exports.getVehicleById = async (req, res, next) => {
+  try {
+    const vehicle = await Vehicle.findById(req.params.id)
+      .populate({ path: 'client', select: 'name contactNumber' });
+
+    if (!vehicle) {
+      return res.status(404).json({ message: 'Vehicle not found' });
+    }
+
+    const services = await Serivce.find({ vehicle: req.params.id })
+      .select('serviceType serviceDate replacedSpares renewalSpares mandatorySpares recommendedSpares')
+      .populate('replacedSpares.spare renewalSpares.spare mandatorySpares.spare recommendedSpares.spare', 'name');
+
+    const vehicleWithServices = vehicle.toObject();
+    vehicleWithServices.services = services;
+
+    res.json(vehicleWithServices);
+  } catch (error) {
+    next(error);
+  }
+};
+exports.getDashboardData = async (req, res, next) => {
+  try {
+    const vehicles = await Vehicle.countDocuments()
+     
+
+    const services = await Serivce.countDocuments()
+    const clients = await Client.countDocuments();
+    const spares = await Spares.countDocuments();
+    res.json({vehicles,services,clients,spares});
   } catch (error) {
     next(error);
   }
