@@ -12,10 +12,10 @@ exports.validateServiceCreation = [
   body('renewalSpares.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be a positive integer'),
   body('mandatorySpares').optional().isArray().withMessage('Mandatory spares must be an array'),
   body('mandatorySpares.*.spare').isMongoId().withMessage('Invalid spare part ID'),
-  body('mandatorySpares.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be a positive integer'),
+  body('mandatorySpares.*.validity').isInt({ min: 1 }).withMessage('Validity must be a positive integer'),
   body('recommendedSpares').optional().isArray().withMessage('Recommended spares must be an array'),
   body('recommendedSpares.*.spare').isMongoId().withMessage('Invalid spare part ID'),
-  body('recommendedSpares.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be a positive integer'),
+  body('recommendedSpares.*.validity').isInt({ min: 1 }).withMessage('Validity must be a positive integer'),
 ];
 
 exports.validateServiceUpdate = [
@@ -30,10 +30,10 @@ exports.validateServiceUpdate = [
   body('renewalSpares.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be a positive integer'),
   body('mandatorySpares').optional().isArray().withMessage('Mandatory spares must be an array'),
   body('mandatorySpares.*.spare').isMongoId().withMessage('Invalid spare part ID'),
-  body('mandatorySpares.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be a positive integer'),
+  body('mandatorySpares.*.validity').isInt({ min: 1 }).withMessage('Validity must be a positive integer'),
   body('recommendedSpares').optional().isArray().withMessage('Recommended spares must be an array'),
   body('recommendedSpares.*.spare').isMongoId().withMessage('Invalid spare part ID'),
-  body('recommendedSpares.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be a positive integer'),
+  body('recommendedSpares.*.validity').isInt({ min: 1 }).withMessage('Validity must be a positive integer'),
 ];
 
 exports.validateServiceId = [

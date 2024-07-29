@@ -10,3 +10,14 @@ exports.login = async (req, res) => {
   const token = jwt.sign({ role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '8h' });
   res.json({ token });
 };
+
+exports.updateToken = async (req, res) => {
+  try {
+    const { fcmToken } = req.body;
+    process.env.fcmToken = fcmToken;
+  res.send('FCM token updated successfully');
+  } catch (error) {
+    next(error);
+  }
+  
+};

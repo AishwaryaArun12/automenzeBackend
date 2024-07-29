@@ -25,7 +25,7 @@ exports.createService = async (req, res, next) => {
 
 exports.getAllServices = async (req, res, next) => {
     try {
-      const { search, page = 1, limit = 10 } = req.query;
+      const { search, page = 1, limit = 7 } = req.query;
       const skip = (page - 1) * limit;
   
       let query = {};
@@ -50,7 +50,7 @@ exports.getAllServices = async (req, res, next) => {
           }
         })
         .populate('replacedSpares.spare renewalSpares.spare mandatorySpares.spare recommendedSpares.spare', 'name validity')
-        .select('serviceType serviceDate nextServiceDate replacedSpares renewalSpares mandatorySpares recommendedSpares')
+        .select('serviceType serviceDate replacedSpares renewalSpares mandatorySpares recommendedSpares')
         .skip(skip)
         .limit(Number(limit));
   
