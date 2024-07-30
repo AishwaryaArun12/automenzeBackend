@@ -1,17 +1,32 @@
 const Notification = require('../models/notification');
 
-exports.getNotification = async (req, res) => {
+exports.getNotification = async (req, res, next) => {
     try {
-      const notifications = await Notification.find()
-        .sort({ createdAt: -1 })
-        .populate('vehicleId')
-        .populate('serviceId');
-      res.json({ notifications });
-    } catch (error) {
-        next(error)    }
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+    
+        const notifications = await Notification.find()
+          .sort({ createdAt: -1 })
+          .populate('vehicleId')
+          .populate('serviceId')
+          .skip(skip)
+          .limit(limit);
+    
+        const totalCount = await Notification.countDocuments();
+    
+        res.json({
+          notifications,
+          currentPage: page,
+          totalPages: Math.ceil(totalCount / limit),
+          totalCount
+        });
+      } catch (error) {
+        next(error);
+      }
   };
 
-  exports.isRead = async (req, res) => {
+  exports.isRead = async (req, res, next) => {
     try {
       const notification = await Notification.findByIdAndUpdate(
         req.params.id,
@@ -25,7 +40,7 @@ exports.getNotification = async (req, res) => {
     } catch (error) {
         next(error)    }
   };
-  exports.getCount = async (req, res) => {
+  exports.getCount = async (req, res, next) => {
     try {
       const count = await Notification.countDocuments({ read: false });
       res.json({ notificationCount: count });

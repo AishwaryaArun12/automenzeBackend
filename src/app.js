@@ -3,10 +3,12 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
 const errorHandler = require('./middleware/errorHandler');
-const serviceSchema = require('./models/serviceSchema');
+const Service = require('./models/serviceSchema');
 const { sendNotification } = require('./utils/firebaseMessaging');
 const cron = require('node-cron');
 const Notification = require('./models/notification');
+const admin = require('firebase-admin');
+
 
 const app = express();
 app.use(cors({
@@ -32,9 +34,15 @@ mongoose.connect(process.env.MONGODB_URI, {
 }).catch(err=>{
     console.log('Error occured while connecting database',err)
 });
+const serviceAccount = require('./config/firebase-adminsdk.json');
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+//cron.schedule('0 0 * * *', async () => {
 
-cron.schedule('0 0 * * *', async () => {
+cron.schedule('* * * * *', async () => {
   try {
+    console.log('Running a task every minute');
     const currentDate = new Date();
     
     // Get the latest service for each vehicle
@@ -46,7 +54,7 @@ cron.schedule('0 0 * * *', async () => {
       }},
       { $replaceRoot: { newRoot: "$latestService" } }
     ]).exec();
-
+    console.log(latestServices,'wwwwwwwwww')
     // Populate necessary fields
     await Service.populate(latestServices, [
       { path: 'vehicle', populate: { path: 'client' } },
@@ -79,19 +87,19 @@ cron.schedule('0 0 * * *', async () => {
         ...checkValiditySpares(service.mandatorySpares),
         ...checkValiditySpares(service.recommendedSpares)
       ];
-
+    
       for (const item of expiredSpares) {
         const spareName = item.spare.name || 'Unknown Spare';
         const notification = new Notification({
           title: 'Spare Part Validity Expired',
-          message: `${spareName} for ${service.vehicle.make} ${service.vehicle.model} has expired.`,
+          message: `${spareName} for ${service.vehicle.maker} ${service.vehicle.model} has expired. Client: ${service.vehicle.client.name}, Phone: ${service.vehicle.client.contactNumber}`,
           clientId: service.vehicle.client._id,
           vehicleId: service.vehicle._id,
           serviceId: service._id
         });
         await notification.save();
 
-        await sendNotification(service.vehicle.client.fcmToken, {
+        await sendNotification(process.env.fcmToken, {
           title: notification.title,
           body: notification.message
         });

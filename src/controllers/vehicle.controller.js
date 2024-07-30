@@ -116,8 +116,68 @@ exports.getDashboardData = async (req, res, next) => {
     const services = await Serivce.countDocuments()
     const clients = await Client.countDocuments();
     const spares = await Spares.countDocuments();
-    res.json({vehicles,services,clients,spares});
+    const currentDate = new Date();
+    
+    // Get the latest service for each vehicle
+    const latestServices = await Serivce.aggregate([
+      { $sort: { serviceDate: -1 } },
+      { $group: {
+        _id: "$vehicle",
+        latestService: { $first: "$$ROOT" }
+      }},
+      { $replaceRoot: { newRoot: "$latestService" } }
+    ]).exec();
+    // Populate necessary fields
+    await Serivce.populate(latestServices, [
+      { path: 'vehicle', populate: { path: 'client' } },
+      { path: 'replacedSpares.spare' },
+      { path: 'renewalSpares.spare' },
+      { path: 'mandatorySpares.spare' },
+      { path: 'recommendedSpares.spare' }
+    ]);
+
+    let expiredSpares = []
+
+    for (const service of latestServices) {
+      const checkQuantitySpares = (spares) => {
+        return spares.filter(item => {
+          const expiryDate = new Date(service.serviceDate);
+          expiryDate.setMonth(expiryDate.getMonth() + item.spare.validity);
+          return expiryDate <= currentDate;
+        });
+      };
+
+      const checkValiditySpares = (spares) => {
+        return spares.filter(item => {
+          const expiryDate = new Date(service.serviceDate);
+          expiryDate.setMonth(expiryDate.getMonth() + item.validity);
+          return expiryDate <= currentDate;
+        });
+      };
+
+      const spares = [
+        ...checkQuantitySpares(service.replacedSpares),
+        ...checkQuantitySpares(service.renewalSpares),
+        ...checkValiditySpares(service.mandatorySpares),
+        ...checkValiditySpares(service.recommendedSpares)
+      ].map(spare => ({
+        ...spare,
+        vehicleMaker: service.vehicle.maker,
+        vehicleModel: service.vehicle.model,
+        vehicleImage: service.vehicle.image,
+        clientName: service.vehicle.client.name,
+        reg: service.vehicle.registrationNumber,
+        date : service.serviceDate,
+        clientContactNumber: service.vehicle.client.contactNumber,
+        clientImage : service.vehicle.client.iamge
+      }));
+      expiredSpares.push(...spares)
+      
+  }
+
+    res.json({vehicles,services,clients,spares,expiredSpares});
   } catch (error) {
     next(error);
   }
 };
+
