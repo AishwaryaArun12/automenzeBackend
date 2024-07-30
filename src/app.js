@@ -37,9 +37,26 @@ cron.schedule('0 0 * * *', async () => {
   try {
     const currentDate = new Date();
     
-    const services = await serviceSchema.find().populate('vehicle').populate('vehicle.client').populate('replacedSpares.spare').populate('renewalSpares.spare').populate('mandatorySpares.spare').populate('recommendedSpares.spare');
+    // Get the latest service for each vehicle
+    const latestServices = await Service.aggregate([
+      { $sort: { serviceDate: -1 } },
+      { $group: {
+        _id: "$vehicle",
+        latestService: { $first: "$$ROOT" }
+      }},
+      { $replaceRoot: { newRoot: "$latestService" } }
+    ]).exec();
 
-    for (const service of services) {
+    // Populate necessary fields
+    await Service.populate(latestServices, [
+      { path: 'vehicle', populate: { path: 'client' } },
+      { path: 'replacedSpares.spare' },
+      { path: 'renewalSpares.spare' },
+      { path: 'mandatorySpares.spare' },
+      { path: 'recommendedSpares.spare' }
+    ]);
+
+    for (const service of latestServices) {
       const checkQuantitySpares = (spares) => {
         return spares.filter(item => {
           const expiryDate = new Date(service.serviceDate);
@@ -81,7 +98,7 @@ cron.schedule('0 0 * * *', async () => {
       }
     }
 
-    console.log('Expired spare parts check completed');
+    console.log('Expired spare parts check completed for latest services');
   } catch (error) {
     console.error('Error in cron job:', error);
   }
