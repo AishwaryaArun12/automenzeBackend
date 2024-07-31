@@ -34,10 +34,22 @@ mongoose.connect(process.env.MONGODB_URI, {
 }).catch(err=>{
     console.log('Error occured while connecting database',err)
 });
-const serviceAccount = process.env.FIREBASE_ADMIN_SDK;
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
+const firebaseConfig = process.env.FIREBASE_ADMIN_SDK;
+
+try {
+  const serviceAccount = JSON.parse(firebaseConfig);
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+} catch (error) {
+  console.error('Error parsing FIREBASE_ADMIN_SDK:', error);
+  console.log('FIREBASE_ADMIN_SDK value:', firebaseConfig);
+  process.exit(1);
+}
+
+
+
+
 //cron.schedule('0 0 * * *', async () => {
 
 cron.schedule('* * * * *', async () => {
