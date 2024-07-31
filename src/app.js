@@ -34,7 +34,7 @@ mongoose.connect(process.env.MONGODB_URI, {
 }).catch(err=>{
     console.log('Error occured while connecting database',err)
 });
-const serviceAccount = require('./config/firebase-adminsdk.json');
+const serviceAccount = process.env.FIREBASE_ADMIN_SDK;
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
