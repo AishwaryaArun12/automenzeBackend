@@ -8,6 +8,8 @@ const notificationSchema = new mongoose.Schema({
   serviceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Service', required: true },
   isRead: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
-});
+}, {
+    capped: { size: 1024 * 1024, max: 500 } // 1MB size limit, max 500 documents
+  });
 
 module.exports = mongoose.model('Notification', notificationSchema);

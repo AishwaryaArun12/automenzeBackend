@@ -72,7 +72,10 @@ exports.getAllServices = async (req, res, next) => {
 exports.getServiceById = async (req, res, next) => {
   try {
     const service = await Service.findById(req.params.id)
-      .populate('vehicle', 'maker model')
+      .populate({path : 'vehicle', select : 'maker model registrationNumber type color' ,populate : {
+        path : 'client',
+        select : 'name contactNumber location city company'
+      }})
       .populate('replacedSpares.spare renewalSpares.spare mandatorySpares.spare recommendedSpares.spare', 'name');
     if (!service) return res.status(404).json({ message: 'Service not found' });
     res.json(service);

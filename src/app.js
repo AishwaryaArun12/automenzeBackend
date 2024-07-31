@@ -34,6 +34,8 @@ mongoose.connect(process.env.MONGODB_URI, {
 }).catch(err=>{
     console.log('Error occured while connecting database',err)
 });
+
+
 const firebaseConfig = process.env.FIREBASE_ADMIN_SDK;
 
 try {
