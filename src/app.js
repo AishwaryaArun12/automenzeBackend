@@ -9,11 +9,11 @@ const cron = require('node-cron');
 const Notification = require('./models/notification');
 const admin = require('firebase-admin');
 
-const fcmTokens = new Set();
+exports.fcmTokens = new Set();
 const app = express();
 app.use(cors({
   origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 // Middleware
@@ -131,4 +131,3 @@ cron.schedule('* * * * *', async () => {
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
-module.exports = {fcmTokens}

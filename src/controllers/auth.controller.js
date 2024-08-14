@@ -13,7 +13,7 @@ exports.login = async (req, res) => {
   res.json({ token });
 };
 
-exports.updateToken = async (req, res) => {
+exports.updateToken = async (req, res, next) => {
   try {
     const { fcmToken } = req.body;
     fcmTokens.add(fcmToken);
