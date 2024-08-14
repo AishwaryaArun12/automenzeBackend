@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const {fcmTokens} = require('../app')
 require('dotenv').config();
 
 exports.login = async (req, res) => {
@@ -15,7 +16,7 @@ exports.login = async (req, res) => {
 exports.updateToken = async (req, res) => {
   try {
     const { fcmToken } = req.body;
-    process.env.fcmToken = fcmToken;
+    fcmTokens.add(fcmToken);
   res.send('FCM token updated successfully');
   } catch (error) {
     next(error);

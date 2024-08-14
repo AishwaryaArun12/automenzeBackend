@@ -9,7 +9,7 @@ const cron = require('node-cron');
 const Notification = require('./models/notification');
 const admin = require('firebase-admin');
 
-
+const fcmTokens = new Set();
 const app = express();
 app.use(cors({
   origin: '*',
@@ -113,10 +113,12 @@ cron.schedule('* * * * *', async () => {
         });
         await notification.save();
 
-        await sendNotification(process.env.fcmToken, {
-          title: notification.title,
-          body: notification.message
-        });
+        for (const token of fcmTokens) {
+          await sendNotification(token, {
+            title: notification.title,
+            body: notification.message
+          });
+        }
       }
     }
 
@@ -128,3 +130,5 @@ cron.schedule('* * * * *', async () => {
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+module.exports = {fcmTokens}
