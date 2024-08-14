@@ -4,12 +4,11 @@ const cors = require('cors');
 require('dotenv').config();
 const errorHandler = require('./middleware/errorHandler');
 const Service = require('./models/serviceSchema');
-const { sendNotification } = require('./utils/firebaseMessaging');
+const { sendNotification,fcmTokens } = require('./utils/firebaseMessaging');
 const cron = require('node-cron');
 const Notification = require('./models/notification');
 const admin = require('firebase-admin');
 
-exports.fcmTokens = new Set();
 const app = express();
 app.use(cors({
   origin: '*',
@@ -93,6 +92,7 @@ cron.schedule('* * * * *', async () => {
           return expiryDate <= currentDate;
         });
       };
+      console.log(latestServices,'ssss');
 
       const expiredSpares = [
         ...checkQuantitySpares(service.replacedSpares),
@@ -100,6 +100,7 @@ cron.schedule('* * * * *', async () => {
         ...checkValiditySpares(service.mandatorySpares),
         ...checkValiditySpares(service.recommendedSpares)
       ];
+      console.log(expiredSpares,'hjkhhb')
     
       for (const item of expiredSpares) {
         const spareName = item.spare.name || 'Unknown Spare';
@@ -129,4 +130,6 @@ cron.schedule('* * * * *', async () => {
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+module.exports = { app, fcmTokens };
 

@@ -17,5 +17,6 @@ const sendNotification = async (token, message) => {
     throw error;
   }
 };
+const fcmTokens = new Set();
 
-module.exports = { sendNotification };
+module.exports = { sendNotification,fcmTokens };

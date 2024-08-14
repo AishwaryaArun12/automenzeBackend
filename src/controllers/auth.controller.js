@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const {fcmTokens} = require('../app')
+const { fcmTokens } = require('../utils/firebaseMessaging');
 require('dotenv').config();
 
 exports.login = async (req, res) => {
@@ -16,6 +16,7 @@ exports.login = async (req, res) => {
 exports.updateToken = async (req, res, next) => {
   try {
     const { fcmToken } = req.body;
+    console.log(fcmTokens,'bbbbbbbbbbbbb');
     fcmTokens.add(fcmToken);
     console.log(fcmTokens,'xssxssaxasdxsdadadawdwaqd');
 
