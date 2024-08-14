@@ -17,8 +17,11 @@ exports.updateToken = async (req, res, next) => {
   try {
     const { fcmToken } = req.body;
     fcmTokens.add(fcmToken);
+    console.log(fcmTokens,'xssxssaxasdxsdadadawdwaqd');
+
   res.send('FCM token updated successfully');
   } catch (error) {
+    console.log(error,'azazaza');
     next(error);
   }
   

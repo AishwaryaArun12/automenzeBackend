@@ -68,7 +68,6 @@ cron.schedule('* * * * *', async () => {
       }},
       { $replaceRoot: { newRoot: "$latestService" } }
     ]).exec();
-    console.log(latestServices,'wwwwwwwwww')
     // Populate necessary fields
     await Service.populate(latestServices, [
       { path: 'vehicle', populate: { path: 'client' } },
