@@ -53,80 +53,78 @@ try {
 
 //cron.schedule('0 0 * * *', async () => {
 
-cron.schedule('* * * * *', async () => {
-  try {
-    console.log('Running a task every minute');
-    const currentDate = new Date();
-    
-    // Get the latest service for each vehicle
-    const latestServices = await Service.aggregate([
-      { $sort: { serviceDate: -1 } },
-      { $group: {
-        _id: "$vehicle",
-        latestService: { $first: "$$ROOT" }
-      }},
-      { $replaceRoot: { newRoot: "$latestService" } }
-    ]).exec();
-    // Populate necessary fields
-    await Service.populate(latestServices, [
-      { path: 'vehicle', populate: { path: 'client' } },
-      { path: 'replacedSpares.spare' },
-      { path: 'renewalSpares.spare' },
-      { path: 'mandatorySpares.spare' },
-      { path: 'recommendedSpares.spare' }
-    ]);
-
-    for (const service of latestServices) {
-      const checkQuantitySpares = (spares) => {
-        return spares.filter(item => {
-          const expiryDate = new Date(service.serviceDate);
-          expiryDate.setMonth(expiryDate.getMonth() + item.spare.validity);
-          return expiryDate <= currentDate;
+  cron.schedule('* * * * *', async () => {
+    try {
+      console.log('Running a task every minute');
+      const currentDate = new Date();
+      
+      const vehicles = await Vehicle.find().populate('client');
+  
+      for (const vehicle of vehicles) {
+        const services = await Service.find({ vehicle: vehicle._id })
+          .sort({ serviceDate: -1 })
+          .populate('replacedSpares.spare renewalSpares.spare mandatorySpares.spare recommendedSpares.spare');
+  
+        const sparePartsMap = new Map();
+  
+        for (const service of services) {
+          const allSpares = [
+            ...service.replacedSpares,
+            ...service.renewalSpares,
+            ...service.mandatorySpares,
+            ...service.recommendedSpares
+          ];
+  
+          for (const spare of allSpares) {
+            if (!sparePartsMap.has(spare.spare._id.toString())) {
+              sparePartsMap.set(spare.spare._id.toString(), { spare, service });
+            }
+          }
+        }
+  
+        const expiredSpares = [];
+        sparePartsMap.forEach(({ spare, service }, spareId) => {
+          const isExpired = checkSpareExpiry(spare, service.serviceDate, currentDate);
+          if (isExpired) {
+            expiredSpares.push({ spare, service });
+          }
         });
-      };
-
-      const checkValiditySpares = (spares) => {
-        return spares.filter(item => {
-          const expiryDate = new Date(service.serviceDate);
-          expiryDate.setMonth(expiryDate.getMonth() + item.validity);
-          return expiryDate <= currentDate;
-        });
-      };
-      console.log(latestServices,'ssss');
-
-      const expiredSpares = [
-        ...checkQuantitySpares(service.replacedSpares),
-        ...checkQuantitySpares(service.renewalSpares),
-        ...checkValiditySpares(service.mandatorySpares),
-        ...checkValiditySpares(service.recommendedSpares)
-      ];
-      console.log(expiredSpares,'hjkhhb')
-    
-      for (const item of expiredSpares) {
-        const spareName = item.spare.name || 'Unknown Spare';
-        const notification = new Notification({
-          title: 'Spare Part Validity Expired',
-          message: `${spareName} for ${service.vehicle.maker} ${service.vehicle.model} has expired. Client: ${service.vehicle.client.name}, Phone: ${service.vehicle.client.contactNumber}`,
-          clientId: service.vehicle.client._id,
-          vehicleId: service.vehicle._id,
-          serviceId: service._id
-        });
-        await notification.save();
-
-        for (const token of fcmTokens) {
-          await sendNotification(token, {
-            title: notification.title,
-            body: notification.message
+  
+        for (const { spare, service } of expiredSpares) {
+          const spareName = spare.spare.name || 'Unknown Spare';
+          const notification = new Notification({
+            title: 'Spare Part Validity Expired',
+            message: `${spareName} for ${vehicle.maker} ${vehicle.model} has expired. Last used on ${service.serviceDate}. Client: ${vehicle.client.name}, Phone: ${vehicle.client.contactNumber}`,
+            clientId: vehicle.client._id,
+            vehicleId: vehicle._id,
+            serviceId: service._id
           });
+          await notification.save();
+  
+          for (const token of fcmTokens) {
+            await sendNotification(token, {
+              title: notification.title,
+              body: notification.message
+            });
+          }
         }
       }
+  
+      console.log('Expired spare parts check completed for all services');
+    } catch (error) {
+      console.error('Error in cron job:', error);
     }
-
-    console.log('Expired spare parts check completed for latest services');
-  } catch (error) {
-    console.error('Error in cron job:', error);
+  });
+  
+  function checkSpareExpiry(spare, serviceDate, currentDate) {
+    const expiryDate = new Date(serviceDate);
+    if (spare.quantity) {
+      expiryDate.setMonth(expiryDate.getMonth() + spare.spare.validity);
+    } else if (spare.validity) {
+      expiryDate.setMonth(expiryDate.getMonth() + spare.validity);
+    }
+    return expiryDate <= currentDate;
   }
-});
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
