@@ -110,80 +110,78 @@ exports.getVehicleById = async (req, res, next) => {
 };
 exports.getDashboardData = async (req, res, next) => {
   try {
-    let expiredSparesByVehicle = {};
-    const vehicles = await Vehicle.countDocuments()
-     
-
-    const services = await Serivce.countDocuments()
+    const vehicles = await Vehicle.countDocuments();
+    const services = await Serivce.countDocuments();
     const clients = await Client.countDocuments();
     const spares = await Spares.countDocuments();
     const currentDate = new Date();
-    
-    // Get the latest service for each vehicle
-    const latestServices = await Serivce.aggregate([
-      { $sort: { serviceDate: -1 } },
-      { $group: {
-        _id: "$vehicle",
-        latestService: { $first: "$$ROOT" }
-      }},
-      { $replaceRoot: { newRoot: "$latestService" } }
-    ]).exec();
-    // Populate necessary fields
-    await Serivce.populate(latestServices, [
-      { path: 'vehicle', populate: { path: 'client' } },
-      { path: 'replacedSpares.spare' },
-      { path: 'renewalSpares.spare' },
-      { path: 'mandatorySpares.spare' },
-      { path: 'recommendedSpares.spare' }
-    ]);
 
-    let expiredSpares = []
+    const allVehicles = await Vehicle.find().populate('client');
+    let expiredSpares = [];
 
-    for (const service of latestServices) {
-      const checkQuantitySpares = (spares) => {
-        return spares.filter(item => {
-          const expiryDate = new Date(service.serviceDate);
-          expiryDate.setMonth(expiryDate.getMonth() + item.spare.validity);
-          return expiryDate <= currentDate;
-        });
-      };
+    for (const vehicle of allVehicles) {
+      const services = await Serivce.find({ vehicle: vehicle._id })
+        .sort({ serviceDate: -1 })
+        .populate('replacedSpares.spare renewalSpares.spare mandatorySpares.spare recommendedSpares.spare');
 
-      const checkValiditySpares = (spares) => {
-        return spares.filter(item => {
-          const expiryDate = new Date(service.serviceDate);
-          expiryDate.setMonth(expiryDate.getMonth() + item.validity);
-          return expiryDate <= currentDate;
-        });
-      };
+      const sparePartsMap = new Map();
 
-      const spares = [
-        ...checkQuantitySpares(service.replacedSpares),
-        ...checkQuantitySpares(service.renewalSpares),
-        ...checkValiditySpares(service.mandatorySpares),
-        ...checkValiditySpares(service.recommendedSpares)
-      ].map(spare => ({
-        ...spare,
-        vehicleMaker: service.vehicle.maker,
-        vehicleModel: service.vehicle.model,
-        vehicleImage: service.vehicle.image,
-        clientName: service.vehicle.client.name,
-        reg: service.vehicle.registrationNumber,
-        date : service.serviceDate,
-        clientContactNumber: service.vehicle.client.contactNumber,
-        clientImage : service.vehicle.client.iamge
-      }));
-      if (spares.length > 0) {
-        if (!expiredSparesByVehicle[service.vehicle._id]) {
-          expiredSparesByVehicle[service.vehicle._id] = [];
+      for (const service of services) {
+        const allSpares = [
+          ...service.replacedSpares,
+          ...service.renewalSpares,
+          ...service.mandatorySpares,
+          ...service.recommendedSpares
+        ];
+
+        for (const spare of allSpares) {
+          if (!sparePartsMap.has(spare.spare._id.toString())) {
+            sparePartsMap.set(spare.spare._id.toString(), { spare, service });
+          }
         }
-        expiredSparesByVehicle[service.vehicle._id].push(...spares);
       }
-      
-  }
 
-    res.json({vehicles, services, clients, spares, expiredSpares : expiredSparesByVehicle});
+      const vehicleExpiredSpares = [];
+      sparePartsMap.forEach(({ spare, service }, spareId) => {
+        const isExpired = checkSpareExpiry(spare, service.serviceDate, currentDate);
+        if (isExpired) {
+          vehicleExpiredSpares.push({
+            name: spare.spare.name,
+            image: spare.spare.image
+          });
+        }
+      });
+
+      if (vehicleExpiredSpares.length > 0) {
+        expiredSpares.push({
+          vehicleId: vehicle._id,
+          vehicleMaker: vehicle.maker,
+          vehicleModel: vehicle.model,
+          vehicleImage: vehicle.image,
+          clientName: vehicle.client.name,
+          reg: vehicle.registrationNumber,
+          clientContactNumber: vehicle.client.contactNumber,
+          clientImage: vehicle.client.image,
+          spares: vehicleExpiredSpares
+        });
+      }
+    }
+
+    res.json({ vehicles, services, clients, spares, expiredSpares });
   } catch (error) {
     next(error);
   }
 };
+
+
+function checkSpareExpiry(spare, serviceDate, currentDate) {
+  const expiryDate = new Date(serviceDate);
+  if (spare.quantity) {
+    expiryDate.setMonth(expiryDate.getMonth() + spare.spare.validity);
+  } else if (spare.validity) {
+    expiryDate.setMonth(expiryDate.getMonth() + spare.validity);
+  }
+  return expiryDate <= currentDate;
+}
+
 
