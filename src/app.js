@@ -8,6 +8,7 @@ const { sendNotification,fcmTokens } = require('./utils/firebaseMessaging');
 const cron = require('node-cron');
 const Notification = require('./models/notification');
 const admin = require('firebase-admin');
+const Vehicle = require('./models/vehicleSchema')
 
 const app = express();
 app.use(cors({

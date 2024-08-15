@@ -110,6 +110,7 @@ exports.getVehicleById = async (req, res, next) => {
 };
 exports.getDashboardData = async (req, res, next) => {
   try {
+    let expiredSparesByVehicle = {};
     const vehicles = await Vehicle.countDocuments()
      
 
@@ -171,11 +172,16 @@ exports.getDashboardData = async (req, res, next) => {
         clientContactNumber: service.vehicle.client.contactNumber,
         clientImage : service.vehicle.client.iamge
       }));
-      expiredSpares.push(...spares)
+      if (spares.length > 0) {
+        if (!expiredSparesByVehicle[service.vehicle._id]) {
+          expiredSparesByVehicle[service.vehicle._id] = [];
+        }
+        expiredSparesByVehicle[service.vehicle._id].push(...spares);
+      }
       
   }
 
-    res.json({vehicles,services,clients,spares,expiredSpares});
+    res.json({vehicles, services, clients, spares, expiredSpares : expiredSparesByVehicle});
   } catch (error) {
     next(error);
   }
