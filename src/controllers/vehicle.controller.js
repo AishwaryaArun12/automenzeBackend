@@ -80,13 +80,26 @@ exports.getAllVehicles = async (req, res, next) => {
 };
 exports.deleteVehicle = async (req, res, next) => {
   try {
-    const vehicle = await Vehicle.findByIdAndDelete(req.params.id);
-    if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
-    res.json({ message: 'Vehicle deleted successfully' });
+    const vehicle = await Vehicle.findById(req.params.id);
+    if (!vehicle) {
+      return res.status(404).json({ message: 'Vehicle not found' });
+    }
+
+    // Delete all services associated with this vehicle
+    await Serivce.deleteMany({ vehicle: vehicle._id });
+
+    // Delete the vehicle
+    await Vehicle.findByIdAndDelete(req.params.id);
+
+    // Remove vehicle reference from the client
+    await Client.findByIdAndUpdate(vehicle.client, { $pull: { vehicles: vehicle._id } });
+
+    res.json({ message: 'Vehicle and associated services deleted successfully' });
   } catch (error) {
     next(error);
   }
 };
+
 exports.getVehicleById = async (req, res, next) => {
   try {
     const vehicle = await Vehicle.findById(req.params.id)
