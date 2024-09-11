@@ -180,7 +180,46 @@ exports.getDashboardData = async (req, res, next) => {
       }
     }
 
-    res.json({ vehicles, services, clients, spares, expiredSpares });
+    const currentYear = new Date().getFullYear();
+    const monthlyServices = await Serivce.aggregate([
+      {
+        $match: {
+          serviceDate: {
+            $gte: new Date(currentYear, 0, 1),
+            $lt: new Date(currentYear + 1, 0, 1)
+          }
+        }
+      },
+      {
+        $group: {
+          _id: { $month: "$serviceDate" },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          month: {
+            $arrayElemAt: [
+              ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+              { $subtract: ["$_id", 1] }
+            ]
+          },
+          services: "$count"
+        }
+      },
+      { $sort: { month: 1 } }
+    ]);
+
+    // Fill in missing months with zero services
+    const allMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const fullMonthlyServices = allMonths.map(month => {
+      const found = monthlyServices.find(item => item.month === month);
+      return found || { month, services: 0 };
+    });
+
+
+    res.json({ vehicles, services,monthlyServices, clients, spares, expiredSpares });
   } catch (error) {
     next(error);
   }
